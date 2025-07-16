@@ -1,0 +1,68 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{lastpage}
+\usepackage[utf8]{inputenc}
+
+% Setting up the header
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\lhead{\includegraphics[width=2cm]{dry_clean_logo.png}} % Replace with your logo path
+\rhead{\textbf{Dry Clean Masters}\\\small 123 Clean Street, Cityville, 45678\\\small Phone: (123) 456-7890 | Email: info@drycleanmasters.com}
+
+% Setting up the footer
+\cfoot{Page \thepage\ of \pageref{LastPage}}
+
+\begin{document}
+
+% Title and Receipt Details
+\begin{center}
+    \LARGE{\textbf{Receipt}} \\
+    \vspace{0.2cm}
+    \large{Receipt Number: DRY-2025-0505-001} \\
+    \large{Date: May 05, 2025 09:46 PM EAT}
+\end{center}
+
+% Customer Information
+\section*{Customer Details}
+\begin{tabular}{p{3cm} p{8cm}}
+    Customer Name: & John Doe \\
+    Contact: & (987) 654-3210 \\
+    Address: & 789 Wash Lane, Cityville, 45678 \\
+\end{tabular}
+
+% Service Details
+\section*{Service Details}
+\begin{tabular}{|p{4cm}|p{3cm}|p{3cm}|}
+    \hline
+    \textbf{Item} & \textbf{Service} & \textbf{Cost (USD)} \\
+    \hline
+    Suit Jacket & Dry Clean & 12.50 \\
+    Dress Shirt & Pressing & 3.00 \\
+    Trousers & Dry Clean & 8.00 \\
+    \hline
+    \textbf{Subtotal} & & 23.50 \\
+    Tax (5\%) & & 1.18 \\
+    \hline
+    \textbf{Total} & & \textbf{24.68} \\
+    \hline
+\end{tabular}
+
+% Additional Information
+\section*{Additional Information}
+\begin{itemize}
+    \item Special Instructions: Handle with care, spot clean collar.
+    \item Pickup Date: May 07, 2025 03:00 PM EAT
+    \item Payment Method: Credit Card
+    \item Authorized Signature: ______________________
+\end{itemize}
+
+% Thank You Note
+\begin{center}
+    \textit{Thank you for choosing Dry Clean Masters! We value your business.}
+\end{center}
+
+\end{document}
