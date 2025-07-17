@@ -1,6 +1,14 @@
 <?php
+/**
+ * Dashboard page for the Laundry Management System
+ * Shows role-specific data and system statistics
+ * Includes improved user profile icon with link to profile management
+ */
 session_start();
 require 'includes/db_connect.php';
+
+// Set timezone to East African Time (Arusha, Tanzania)
+date_default_timezone_set('Africa/Dar_es_Salaam');
 
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
@@ -11,6 +19,12 @@ if (!isset($_SESSION['user_id'])) {
 $role = $_SESSION['role'];
 $user_id = $_SESSION['user_id'];
 $username = $_SESSION['name'] ?? 'User';
+
+// Fetch user profile picture
+$stmt = $pdo->prepare("SELECT profile_picture FROM users WHERE user_id = ?");
+$stmt->execute([$user_id]);
+$user_data = $stmt->fetch(PDO::FETCH_ASSOC);
+$profile_picture = $user_data['profile_picture'] ?? 'assets/images/default-profile.png';
 
 // Orders
 $query = $role === 'customer' ? "SELECT * FROM orders WHERE user_id = ?" : "SELECT * FROM orders";
@@ -80,7 +94,7 @@ if ($role === 'staff' || $role === 'admin') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Laundry Management System</title>
     <link rel="stylesheet" href="css/styles.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body class="dashboard-body" data-theme="light">
@@ -90,9 +104,14 @@ if ($role === 'staff' || $role === 'admin') {
             <h2>Welcome, <?php echo htmlspecialchars($username); ?> (<?php echo htmlspecialchars($role); ?>)</h2>
             <div class="header-controls">
                 <button id="theme-toggle" class="theme-toggle"><i class="fas fa-moon"></i></button>
+                <!-- Improved user info section with profile picture and link to profile page -->
                 <div class="user-info">
-                    <i class="fas fa-user"></i>
-                    <span><?php echo htmlspecialchars($username); ?></span>
+                    <a href="profile.php" title="Manage Profile" style="display: flex; align-items: center; text-decoration: none; color: inherit;">
+                        <!-- Profile picture with fallback to default image -->
+                        <img src="<?php echo htmlspecialchars($profile_picture); ?>" alt="Profile" 
+                             style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary-color);">
+                        <span style="margin-left: 8px;"><?php echo htmlspecialchars($username); ?></span>
+                    </a>
                 </div>
             </div>
         </header>

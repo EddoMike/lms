@@ -1,11 +1,24 @@
 <?php
+/**
+ * Forgot Password Page for Laundry Management System
+ * Handles phone-based password reset functionality
+ * Allows users to request a reset code via SMS and set a new password
+ * Can be accessed directly or from the login page
+ * Uses East African Time (EAT/UTC+3) for expiration timestamps
+ */
 session_start();
 require 'includes/db_connect.php';
 require 'includes/sendNotifications.php';
 
+// Set timezone to East African Time (Arusha, Tanzania)
+date_default_timezone_set('Africa/Dar_es_Salaam');
+
 $error = null;
 $success = null;
 $show_reset_form = false;
+
+// Get phone number from URL if passed from login page
+$phone = isset($_GET['phone']) ? trim($_GET['phone']) : '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['action']) && $_POST['action'] === 'request_code') {
@@ -17,7 +30,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($user) {
             // Generate 6-digit reset code
             $code = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+            
+            // Set expiration time to 15 minutes from now in East African Time
             $expires_at = date('Y-m-d H:i:s', time() + 15 * 60); // 15 minutes from now
+            
+            // Log the current time and expiration time for debugging
+            error_log("Current time (EAT): " . date('Y-m-d H:i:s'));
+            error_log("Expiration time (EAT): " . $expires_at);
 
             // Delete any existing reset codes for this user
             $stmt = $pdo->prepare("DELETE FROM reset_codes WHERE user_id = ?");
@@ -50,9 +69,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $new_password = $_POST['new_password'];
 
         // Find the reset code
+        // Use NOW() with the server's timezone which is now set to East African Time
         $stmt = $pdo->prepare("SELECT * FROM reset_codes WHERE code = ? AND expires_at > NOW()");
         $stmt->execute([$code]);
         $reset = $stmt->fetch();
+        
+        // Log verification attempt for debugging
+        error_log("Reset code verification attempt: " . $code);
+        error_log("Current server time (EAT): " . date('Y-m-d H:i:s'));
+        
+        if (!$reset) {
+            // For debugging: check if code exists but is expired
+            $stmt = $pdo->prepare("SELECT * FROM reset_codes WHERE code = ?");
+            $stmt->execute([$code]);
+            $expired_reset = $stmt->fetch();
+            
+            if ($expired_reset) {
+                error_log("Found expired code. Expiration time was: " . $expired_reset['expires_at']);
+            } else {
+                error_log("No reset code found with code: " . $code);
+            }
+        }
 
         if ($reset) {
             // Update user's password
@@ -118,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <input type="hidden" name="action" value="request_code">
                     <div class="input-group">
                         <label for="phone"><i class="fas fa-phone"></i> Phone Number</label>
-                        <input type="text" id="phone" name="phone" required placeholder="Enter your phone number">
+                        <input type="text" id="phone" name="phone" value="<?php echo htmlspecialchars($phone); ?>" required placeholder="Enter your phone number">
                     </div>
                     <button type="submit" class="login-button">Send Reset Code</button>
                 </form>

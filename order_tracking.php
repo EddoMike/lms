@@ -84,13 +84,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && in_array($role, ['staff', 'admin'])
         $order_id = intval($_POST['order_id']);
         
         // Fetch customer details (name and phone number)
-        $stmt = $pdo->prepare("SELECT u.name, u.phone_number FROM users u JOIN orders o ON u.user_id = o.user_id WHERE o.order_id = ?");
+        $stmt = $pdo->prepare("SELECT u.name, u.phone FROM users u JOIN orders o ON u.user_id = o.user_id WHERE o.order_id = ?");
         $stmt->execute([$order_id]);
         $customer = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($customer && !empty($customer['phone_number'])) {
+        if ($customer && !empty($customer['phone'])) {
             $user_name = ucfirst($customer['name']);
-            $phone_number = $customer['phone_number'];
+            $phone_number = $customer['phone'];
             $username = "StevenBodyJr";
             $password = "5@m3@5Y0UR5";
             $senderId = "EasyTextAPI";
@@ -245,11 +245,20 @@ if (isset($_GET['ajax'])) {
         $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
         // Merge payment status and attended_by name
         foreach ($orders as &$order) {
+            // Add payment status
             $order['payment_status'] = $payment_map[$order['order_id']] ?? 'N/A';
-            $stmt = $pdo->prepare("SELECT name FROM users WHERE user_id = ?");
-            $stmt->execute([$order['attended_by']]);
-            $attended_by_user = $stmt->fetch(PDO::FETCH_ASSOC);
-            $order['attended_by_name'] = $attended_by_user ? $attended_by_user['name'] : 'Not Assigned';
+            
+            // Handle attended_by safely
+            $attended_by_name = 'Not Assigned';
+            if (isset($order['attended_by']) && !is_null($order['attended_by'])) {
+                $stmt = $pdo->prepare("SELECT name FROM users WHERE user_id = ?");
+                $stmt->execute([$order['attended_by']]);
+                $attended_by_user = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($attended_by_user) {
+                    $attended_by_name = $attended_by_user['name'];
+                }
+            }
+            $order['attended_by_name'] = $attended_by_name;
         }
         error_log("AJAX - Orders fetched: " . count($orders));
         echo json_encode($orders);
@@ -311,10 +320,16 @@ if (isset($_GET['ajax'])) {
                             <?php else: ?>
                                 <?php foreach ($orders as $order): ?>
                                     <?php
-                                    $stmt = $pdo->prepare("SELECT name FROM users WHERE user_id = ?");
-                                    $stmt->execute([$order['attended_by']]);
-                                    $attended_by_user = $stmt->fetch(PDO::FETCH_ASSOC);
-                                    $attended_by_name = $attended_by_user ? $attended_by_user['name'] : 'Not Assigned';
+                                    // Check if attended_by exists and is not null before querying
+                                    $attended_by_name = 'Not Assigned';
+                                    if (isset($order['attended_by']) && !is_null($order['attended_by'])) {
+                                        $stmt = $pdo->prepare("SELECT name FROM users WHERE user_id = ?");
+                                        $stmt->execute([$order['attended_by']]);
+                                        $attended_by_user = $stmt->fetch(PDO::FETCH_ASSOC);
+                                        if ($attended_by_user) {
+                                            $attended_by_name = $attended_by_user['name'];
+                                        }
+                                    }
                                     ?>
                                     <tr>
                                         <td><?php echo $order['order_id']; ?></td>
@@ -339,7 +354,10 @@ if (isset($_GET['ajax'])) {
                                                     <input type="hidden" name="confirm_order" value="1">
                                                 </form>
                                                
-                                                  <a href="sendSMS.php"> <button width="10%" class="action-button">Send SMS</button> </a> 
+                                                <form method="POST" action="order_tracking.php" style="display:inline;">
+                                                    <input type="hidden" name="order_id" value="<?php echo $order['order_id']; ?>">
+                                                    <button type="submit" name="send_sms" class="action-button">Send SMS</button>
+                                                </form>
                                                 
                                             <?php endif; ?>
                                             <?php if ($role === 'staff'): ?>
@@ -514,7 +532,8 @@ if (isset($_GET['ajax'])) {
 
         // Fetch orders periodically
         function fetchOrders() {
-            fetch('/eddo/order_tracking.php?ajax=1', { credentials: 'same-origin' })
+            // Using a relative path instead of absolute path to avoid 404 errors
+            fetch('order_tracking.php?ajax=1', { credentials: 'same-origin' })
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Network response was not ok: ' + response.status);
