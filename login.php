@@ -1,7 +1,20 @@
 <?php
+/**
+ * Login page for the Laundry Management System
+ * Handles user authentication and password reset via SMS
+ * Includes phone-based password reset functionality
+ * Displays success messages from password reset process
+ */
 session_start();
 require 'includes/db_connect.php';
-require 'includes/sendNotifications.php';
+require 'includes/sendNotifications.php'; // Already contains sendSms function
+
+// Check for success message from password reset
+$success = null;
+if (isset($_SESSION['login_message'])) {
+    $success = $_SESSION['login_message'];
+    unset($_SESSION['login_message']); // Clear the message after displaying it
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
     $email = trim($_POST['email']);
@@ -24,47 +37,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
     }
 }
 
-// Handle password reset request
+// Handle password reset request - redirect to forgot_password.php
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
-    $email = trim($_POST['email']);
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE email = ?");
-    $stmt->execute([$email]);
-    $user = $stmt->fetch();
-
-    if ($user) {
-        // Generate a unique token
-        $token = bin2hex(random_bytes(32));
-        $reset_link = "http://".$_SERVER['HTTP_HOST']."/reset_password.php?token=$token";
-
-        // Store token in password_resets table
-        try {
-            $stmt = $pdo->prepare("INSERT INTO password_resets (email, token) VALUES (?, ?) ON DUPLICATE KEY UPDATE token = ?, created_at = NOW()");
-            $stmt->execute([$email, $token, $token]);
-            
-            // Send reset email
-            $subject = "Password Reset Request - Laundry Management System";
-            $message = "Dear {$user['name']},<br><br>";
-            $message .= "You have requested to reset your password. Click the link below to reset it:<br>";
-            $message .= "<a href='$reset_link'>Reset Password</a><br><br>";
-            $message .= "If you did not request this, please ignore this email.<br>";
-            $message .= "This link will expire in 1 hour.<br><br>";
-            $message .= "Best regards,<br>Laundry Management System";
-            
-            $email_response = json_decode(sendEmail($email, $subject, $message), true);
-            if ($email_response['success']) {
-                $success = "A password reset link has been sent to your email.";
-                error_log("Password reset link sent to: $email");
-            } else {
-                $error = "Failed to send reset email. Please try again.";
-                error_log("Failed to send reset email to $email: " . $email_response['message']);
-            }
-        } catch (PDOException $e) {
-            $error = "Failed to process reset request. Please try again.";
-            error_log("Error storing reset token for $email: " . $e->getMessage());
-        }
+    // Get the phone number from the form
+    $phone = trim($_POST['phone']);
+    
+    // Validate phone number format (basic validation)
+    if (empty($phone)) {
+        $error = "Please enter your phone number.";
+        error_log("Empty phone number submitted for password reset");
     } else {
-        $error = "No account found with that email.";
-        error_log("Password reset attempt for non-existent email: $email");
+        // Redirect to forgot_password.php with the phone number as a parameter
+        // This uses the existing phone-based reset functionality
+        header("Location: forgot_password.php?phone=" . urlencode($phone));
+        exit;
     }
 }
 ?>
@@ -107,12 +93,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
             <!-- Password Reset Form (Hidden by default) -->
             <div id="reset-form" style="display: none;">
                 <h3>Reset Password</h3>
+                <p>Enter your phone number to receive a temporary password via SMS</p>
                 <form method="POST" action="" class="login-form">
                     <div class="input-group">
-                        <label for="reset_email"><i class="fas fa-envelope"></i> Email</label>
-                        <input type="email" id="reset_email" name="email" required placeholder="Enter your email">
+                        <label for="reset_phone"><i class="fas fa-phone"></i> Phone Number</label>
+                        <input type="text" id="reset_phone" name="phone" required placeholder="Enter your phone number">
                     </div>
-                    <button type="submit" name="reset_password" class="login-button">Send Reset Link</button>
+                    <button type="submit" name="reset_password" class="login-button">Send Temporary Password</button>
                 </form>
                 <p><a href="#" onclick="showLoginForm()">Back to Login</a></p>
             </div>
